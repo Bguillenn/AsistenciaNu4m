@@ -1,0 +1,47 @@
+name: Asistencia Automatica
+
+on:
+  schedule:
+    # Se ejecuta a las 22:00 UTC (17:00 hora Perú) de lunes a viernes
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:
+
+# Otorga permisos al bot de GitHub para que pueda modificar el repositorio
+permissions:
+  contents: write
+
+jobs:
+  marcar_asistencia:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Descargar el código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar entorno de Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar script de marcación
+        env:
+          RANKMI_TOKEN: ${{ secrets.RANKMI_TOKEN }}
+        run: python script.py
+
+      - name: Guardar registro en el repositorio (Commit & Push)
+        # Este paso solo se ejecuta si el script anterior no falló
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Agrega el archivo a Git. Si el archivo no existe aún, lo creará virtualmente en el commit.
+          git add marcados.txt
+          
+          # Verifica si hay cambios reales en el repositorio y hace el commit
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Registro automático: Día marcado" && git push)
